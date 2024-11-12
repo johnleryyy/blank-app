@@ -1,28 +1,33 @@
 import streamlit as st
 
-# Center alignment for the whole app
+# CSS for custom button styling
 st.markdown("""
     <style>
-    .centered {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
+    .button {
+        display: inline-block;
+        border-radius: 25px;
+        background-color: #fff;
+        border: 2px solid #000;
+        color: #000;
+        text-align: center;
+        font-size: 16px;
+        padding: 10px 20px;
+        margin: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
     }
-    .stButton>button {
-        width: 200px;  /* Optional: Set a fixed width for the buttons */
-        margin: 10px;  /* Optional: Add space between buttons */
+    .button:hover {
+        background-color: #000;
+        color: #fff;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Container to center all elements
-st.markdown('<div class="centered">', unsafe_allow_html=True)
-
 # Streamlit app title
-st.title("Free airdrop")
+st.title("Stylish CSS Buttons")
 
-# List of links and their corresponding button labels
+# List of button labels and links
 links = {
     "TwitterAgeAirdrop": "https://dropair.io?ref=RMF9RU",
     "PAWSOG AIRDROP": "https://t.me/PAWSOG_bot/PAWS?startapp=e9IaDCrE",
@@ -32,10 +37,6 @@ links = {
     "OASIS": "https://r.oasis.ai/2666b9b66ee30259"
 }
 
-# Create a button for each link
+# Generate the buttons
 for label, url in links.items():
-    if st.button(label):
-        st.markdown(f"[Click here to go to {label}]({url})", unsafe_allow_html=True)
-
-# Close the div
-st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(f'<a href="{url}" class="button">{label}</a>', unsafe_allow_html=True)
