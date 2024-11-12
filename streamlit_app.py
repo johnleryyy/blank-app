@@ -1,7 +1,5 @@
 import streamlit as st
 
-import streamlit as st
-
 # Center alignment for the whole app
 st.markdown("""
     <style>
@@ -24,20 +22,19 @@ st.markdown('<div class="centered">', unsafe_allow_html=True)
 # Streamlit app title
 st.title("Free airdrop")
 
-# List of links and their labels
-links = {
-    "Google": "https://www.google.com",
-    "YouTube": "https://www.youtube.com",
-    "GitHub": "https://www.github.com",
-    "OpenAI": "https://www.openai.com"
-}
+# Link and button label
+link = "https://dropair.io?ref=RMF9RU"
+button_label = "TwitterAgeAirdrop"
 
-# Create a button for each link
-for label, url in links.items():
-    if st.button(f"Go to {label}"):
-        st.write(f"Redirecting to {label}...")
-        st.experimental_rerun()  # Optional: Displaying a small text or indication before redirect
-        st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
+# Create a button for the link
+if st.button(button_label):
+    # Using JavaScript for redirection
+    js_code = f"""
+    <script type="text/javascript">
+        window.location.href = "{link}";
+    </script>
+    """
+    st.markdown(js_code, unsafe_allow_html=True)
 
 # Close the div
 st.markdown('</div>', unsafe_allow_html=True)
