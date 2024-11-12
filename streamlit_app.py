@@ -30,7 +30,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Streamlit app title
-st.title("Stylish CSS Buttons")
+st.title("FREE AIRDROP")
 
 # Start the container for the grid layout
 st.markdown('<div class="button-container">', unsafe_allow_html=True)
