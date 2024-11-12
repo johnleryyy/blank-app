@@ -26,15 +26,9 @@ st.title("Free airdrop")
 link = "https://dropair.io?ref=RMF9RU"
 button_label = "TwitterAgeAirdrop"
 
-# Create a button for the link
+# Create a button that shows a clickable link
 if st.button(button_label):
-    # Using JavaScript for redirection
-    js_code = f"""
-    <script type="text/javascript">
-        window.location.href = "{link}";
-    </script>
-    """
-    st.markdown(js_code, unsafe_allow_html=True)
+    st.markdown(f"[Click here to go to {button_label}]({link})", unsafe_allow_html=True)
 
 # Close the div
 st.markdown('</div>', unsafe_allow_html=True)
