@@ -1,8 +1,14 @@
 import streamlit as st
 
-# CSS for custom button styling
+# CSS for custom button styling and grid layout
 st.markdown("""
     <style>
+    .button-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        justify-items: center;
+    }
     .button {
         display: inline-block;
         border-radius: 25px;
@@ -12,7 +18,6 @@ st.markdown("""
         text-align: center;
         font-size: 16px;
         padding: 10px 20px;
-        margin: 10px;
         cursor: pointer;
         transition: all 0.3s ease;
         text-decoration: none;
@@ -27,6 +32,9 @@ st.markdown("""
 # Streamlit app title
 st.title("Stylish CSS Buttons")
 
+# Start the container for the grid layout
+st.markdown('<div class="button-container">', unsafe_allow_html=True)
+
 # List of button labels and links
 links = {
     "TwitterAgeAirdrop": "https://dropair.io?ref=RMF9RU",
@@ -37,6 +45,9 @@ links = {
     "OASIS": "https://r.oasis.ai/2666b9b66ee30259"
 }
 
-# Generate the buttons
+# Generate the buttons in a grid layout
 for label, url in links.items():
     st.markdown(f'<a href="{url}" class="button">{label}</a>', unsafe_allow_html=True)
+
+# Close the container
+st.markdown('</div>', unsafe_allow_html=True)
