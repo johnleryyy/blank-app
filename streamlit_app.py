@@ -3,11 +3,44 @@ import pandas as pd
 import numpy as np
 import seaborn as sns  # For EDA visualizations
 import matplotlib.pyplot as plt  # For EDA visualizations
+import plotly.graph_objects as go  # For enhanced table display
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, accuracy_score
-import plotly.graph_objects as go  # For enhanced table display
+
+# Add custom CSS for better styling
+st.markdown("""
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .subheader {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .container {
+            padding: 20px;
+        }
+        .sidebar .sidebar-content {
+            padding: 20px;
+        }
+        .streamlit-expanderHeader {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007ACC;
+        }
+        .streamlit-expander {
+            margin-top: 10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Function to generate synthetic movie data
 def generate_synthetic_movie_data(features, class_settings, sample_size):
@@ -24,7 +57,7 @@ def generate_synthetic_movie_data(features, class_settings, sample_size):
     return pd.DataFrame(data)
 
 # Streamlit App
-st.title("Synthetic Movie Data Generator and Classifier")
+st.title("Synthetic Movie Data Generator and Classifier", anchor="title")
 
 # Sidebar for Data Generation Parameters
 st.sidebar.header("Synthetic Data Generation")
@@ -56,15 +89,16 @@ for class_name in classes:
 # Sample Size
 sample_size = st.sidebar.number_input("Number of samples", min_value=100, max_value=100000, value=500, step=100)
 
-# Generate Data Button
-if st.sidebar.button("Generate Data"):
+# Generate Data and Train Model Button
+if st.sidebar.button("Generate Data & Train Model"):
     try:
+        # Generate the synthetic data
         df = generate_synthetic_movie_data(features, class_settings, sample_size)
         st.session_state['data'] = df  # Store the data in session_state
         st.success("Synthetic data generated successfully!")
-        
+
         # Display the synthetic data generated
-        st.write("Sample of Generated Data:")
+        st.write("### Sample of Generated Data:")
         st.write(df.head())
 
         # Save data to session state
@@ -75,106 +109,94 @@ if st.sidebar.button("Generate Data"):
             file_name="synthetic_movie_data.csv",
             mime="text/csv"
         )
+
+        # Train the model right after generating data
+        # Split data
+        X = df[features]
+        y = df['Class']
+
+        # Encode class labels
+        label_encoder = LabelEncoder()
+        y_encoded = label_encoder.fit_transform(y)
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+        # Hyperparameter tuning with GridSearchCV
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
+        }
+        model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
+        model.fit(X_train, y_train)
+
+        # Predict on test data
+        y_pred = model.predict(X_test)
+
+        # Evaluate model
+        accuracy = accuracy_score(y_test, y_pred)
+        classification_rep = classification_report(y_test, y_pred, target_names=label_encoder.classes_, output_dict=True)
+
+        st.subheader("Best Model Performance")
+        st.write(f"**Best Model:** RandomForestClassifier")
+        st.write(f"**Accuracy:** {accuracy:.4f}")
+
+        # Convert classification report to a DataFrame
+        report_df = pd.DataFrame(classification_rep).transpose()
+
+        # Display the classification report
+        st.write("### Classification Report (Best Model):")
+        st.dataframe(report_df)
+
+        # Optional: Use Plotly for an enhanced table
+        fig = go.Figure(
+            data=[go.Table(
+                header=dict(values=list(report_df.columns), fill_color="paleturquoise", align="left"),
+                cells=dict(values=[report_df[col] for col in report_df.columns], fill_color="lavender", align="left")
+            )]
+        )
+        st.plotly_chart(fig)
+
+        # Save model and label encoder to session state
+        st.session_state['model'] = model
+        st.session_state['label_encoder'] = label_encoder
+
+
+        # Display histograms for each feature
+        st.write("### Feature Distribution")
+        for feature in features:
+            plt.figure(figsize=(8, 4))
+            sns.histplot(df[feature], kde=True, color="teal")
+            plt.title(f"Distribution of {feature}", fontsize=18)
+            st.pyplot(plt)
+
+        # Class distribution
+        st.write("### Class Distribution")
+        plt.figure(figsize=(6, 4))
+        sns.countplot(x='Class', data=df, palette='Set2')
+        plt.title("Class Distribution", fontsize=18)
+        st.pyplot(plt)
+
+        # Correlation matrix heatmap using Plotly for interactivity
+        st.write("### Correlation Matrix")
+        corr_matrix = df[features].corr()
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=corr_matrix.columns,
+            y=corr_matrix.columns,
+            colorscale='Viridis',
+            colorbar=dict(title='Correlation')
+        ))
+        st.plotly_chart(fig)
+
+        # Boxplots by class
+        st.write("### Boxplots by Class")
+        for feature in features:
+            plt.figure(figsize=(8, 4))
+            sns.boxplot(x='Class', y=feature, data=df, palette='Set2')
+            plt.title(f"Boxplot of {feature} by Class", fontsize=18)
+            st.pyplot(plt)
+
     except Exception as e:
-        st.error(f"Error generating data: {e}")
-
-# Always display the synthetic data if it exists in session_state
-if 'data' in st.session_state:
-    st.write("Sample of Synthetic Data:")
-    st.write(st.session_state['data'].head())
-
-# Train/Test Split Configuration
-if 'data' in st.session_state:
-    st.sidebar.subheader("Train/Test Split Configuration")
-    test_size = st.sidebar.slider("Test Size", min_value=0.1, max_value=0.9, value=0.2, step=0.1)
-
-    # Split data
-    df = st.session_state['data']
-    X = df[features]
-    y = df['Class']
-
-    # Encode class labels
-    label_encoder = LabelEncoder()
-    y_encoded = label_encoder.fit_transform(y)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=test_size, random_state=42)
-
-    # Train Model Button
-    if st.sidebar.button("Train Model"):
-        try:
-            # Hyperparameter tuning with GridSearchCV
-            param_grid = {
-                'n_estimators': [50, 100, 200],
-                'max_depth': [None, 10, 20, 30],
-                'min_samples_split': [2, 5, 10],
-                'min_samples_leaf': [1, 2, 4]
-            }
-            model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
-            model.fit(X_train, y_train)
-
-            # Predict on test data
-            y_pred = model.predict(X_test)
-
-            # Evaluate model
-            accuracy = accuracy_score(y_test, y_pred)
-            classification_rep = classification_report(y_test, y_pred, target_names=label_encoder.classes_, output_dict=True)
-
-            st.subheader("Best Model Performance")
-            st.write(f"**Best Model:** RandomForestClassifier")
-            st.write(f"**Accuracy:** {accuracy:.4f}")
-
-            # Convert classification report to a DataFrame
-            report_df = pd.DataFrame(classification_rep).transpose()
-
-            # Display the classification report
-            st.write("**Classification Report (Best Model):**")
-            st.dataframe(report_df)
-
-            # Optional: Use Plotly for an enhanced table
-            fig = go.Figure(
-                data=[go.Table(
-                    header=dict(values=list(report_df.columns), fill_color="paleturquoise", align="left"),
-                    cells=dict(values=[report_df[col] for col in report_df.columns], fill_color="lavender", align="left")
-                )]
-            )
-            st.plotly_chart(fig)
-
-            # Save model and label encoder to session state
-            st.session_state['model'] = model
-            st.session_state['label_encoder'] = label_encoder
-
-            # EDA - Show after training
-            st.subheader("Exploratory Data Analysis (EDA) Results")
-
-            # Display histograms for each feature
-            st.write("### Feature Distribution")
-            for feature in features:
-                plt.figure(figsize=(8, 4))
-                sns.histplot(df[feature], kde=True)
-                plt.title(f"Distribution of {feature}")
-                st.pyplot(plt)
-
-            # Class distribution
-            st.write("### Class Distribution")
-            plt.figure(figsize=(6, 4))
-            sns.countplot(x='Class', data=df)
-            plt.title("Class Distribution")
-            st.pyplot(plt)
-
-            # Correlation matrix heatmap
-            st.write("### Correlation Matrix")
-            plt.figure(figsize=(10, 8))
-            corr_matrix = df[features].corr()
-            sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f")
-            st.pyplot(plt)
-
-            # Boxplots by class
-            st.write("### Boxplots by Class")
-            for feature in features:
-                plt.figure(figsize=(8, 4))
-                sns.boxplot(x='Class', y=feature, data=df)
-                plt.title(f"Boxplot of {feature} by Class")
-                st.pyplot(plt)
-
-        except Exception as e:
-            st.error(f"Error training model: {e}")
+        st.error(f"Error: {e}")
