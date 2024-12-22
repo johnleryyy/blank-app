@@ -5,9 +5,10 @@ import seaborn as sns  # For EDA visualizations
 import matplotlib.pyplot as plt  # For EDA visualizations
 import plotly.graph_objects as go  # For enhanced table display
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
+from xgboost import XGBClassifier
 
 # Add custom CSS for better styling
 st.markdown("""
@@ -80,7 +81,7 @@ for class_name in classes:
     with st.sidebar.expander(f"{class_name} Settings"):
         class_config = {}
         for feature in features:
-            mean = st.number_input(f"Mean for {feature} ({class_name})", value=100.0, key=f"{class_name}_{feature}_mean")
+            mean = st.number_input(f"Mean for {feature} ({class_name})", value=100.0 + 20 * classes.index(class_name), key=f"{class_name}_{feature}_mean")
             std_dev = st.number_input(f"Std Dev for {feature} ({class_name})", value=10.0, key=f"{class_name}_{feature}_std")
             class_config[f"Mean for {feature}"] = mean
             class_config[f"Std Dev for {feature}"] = std_dev
@@ -119,27 +120,39 @@ if st.sidebar.button("Generate Data & Train Model"):
         label_encoder = LabelEncoder()
         y_encoded = label_encoder.fit_transform(y)
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+        # Scale features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-        # Hyperparameter tuning with GridSearchCV
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [None, 10, 20, 30],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4]
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_encoded, test_size=0.2, random_state=42)
+
+        # Model configurations
+        classifiers = {
+            'RandomForest': RandomForestClassifier(random_state=42),
+            'GradientBoosting': GradientBoostingClassifier(random_state=42),
+            'XGBoost': XGBClassifier(random_state=42)
         }
-        model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
-        model.fit(X_train, y_train)
 
-        # Predict on test data
-        y_pred = model.predict(X_test)
+        best_model = None
+        best_accuracy = 0
+        results = []  # To store results of all models
+
+        for name, clf in classifiers.items():
+            clf.fit(X_train, y_train)
+            y_pred = clf.predict(X_test)
+            accuracy = accuracy_score(y_test, y_pred)
+            results.append({'Model': name, 'Accuracy': accuracy})
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_model = clf
 
         # Evaluate model
+        y_pred = best_model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         classification_rep = classification_report(y_test, y_pred, target_names=label_encoder.classes_, output_dict=True)
 
         st.subheader("Best Model Performance")
-        st.write(f"**Best Model:** RandomForestClassifier")
+        st.write(f"**Best Model:** {best_model.__class__.__name__}")
         st.write(f"**Accuracy:** {accuracy:.4f}")
 
         # Convert classification report to a DataFrame
@@ -149,19 +162,18 @@ if st.sidebar.button("Generate Data & Train Model"):
         st.write("### Classification Report (Best Model):")
         st.dataframe(report_df)
 
-        # Optional: Use Plotly for an enhanced table
-        fig = go.Figure(
-            data=[go.Table(
-                header=dict(values=list(report_df.columns), fill_color="paleturquoise", align="left"),
-                cells=dict(values=[report_df[col] for col in report_df.columns], fill_color="lavender", align="left")
-            )]
-        )
-        st.plotly_chart(fig)
+        # Comparison of model performances
+        st.write("### Model Comparison")
+        results_df = pd.DataFrame(results)
+        st.dataframe(results_df)
 
-        # Save model and label encoder to session state
-        st.session_state['model'] = model
-        st.session_state['label_encoder'] = label_encoder
-
+        # Visualize model comparison
+        plt.figure(figsize=(8, 6))
+        sns.barplot(x='Model', y='Accuracy', data=results_df, palette='viridis')
+        plt.title("Model Comparison by Accuracy", fontsize=18)
+        plt.ylabel("Accuracy", fontsize=14)
+        plt.xlabel("Model", fontsize=14)
+        st.pyplot(plt)
 
         # Display histograms for each feature
         st.write("### Feature Distribution")
